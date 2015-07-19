@@ -94,3 +94,30 @@ def test_chunkwriter_exception_on_closed_file():
     writer.close()
     with pytest.raises(ValueError):
         writer.writeline("test")
+
+
+callback_called = False
+
+
+def test_chunkwriter_callback():
+    def callback(filename, num_lines_written):
+        global callback_called
+        callback_called = True
+        assert os.path.exists(filename)
+        assert num_lines_written > 0
+        assert len(fileGetContents(filename)) > 0
+
+    writer = chunky.open(
+        "/tmp/test_{0}.txt", 'w', chunk_size=10,
+        cb_chunk_written=callback)
+
+    for i in range(0, 35):
+        writer.writeline(str(i))
+
+    writer.close()
+
+    assert callback_called
+    assert os.path.exists("/tmp/test_0.txt")
+    assert os.path.exists("/tmp/test_1.txt")
+    assert os.path.exists("/tmp/test_2.txt")
+    assert os.path.exists("/tmp/test_3.txt")

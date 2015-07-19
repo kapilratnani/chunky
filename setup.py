@@ -12,7 +12,6 @@ config = {
     'version': '0.1',
     'install_requires': [],
     'packages': ['chunky'],
-    'scripts': [],
     'name': 'chunky'
 }
 

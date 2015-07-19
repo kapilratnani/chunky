@@ -30,12 +30,13 @@ class ChunkWriter:
     Creates files as per the pattern specified.
     """
 
-    def __init__(self, file_pattern, chunk_size):
+    def __init__(self, file_pattern, chunk_size, cb_chunk_written):
         self.pattern = file_pattern
         self.chunk_size = chunk_size
         self.cnum = 0
         self.line_count = 0
         self.fileobj = None
+        self.cb_chunk_written = cb_chunk_written
         self.__make_new_file()
 
     def __make_new_file(self):
@@ -47,7 +48,15 @@ class ChunkWriter:
     def __close_current(self):
         if self.fileobj:
             self.fileobj.close()
+            self.__notify_subscriber()
             self.fileobj = None
+
+    def __notify_subscriber(self):
+        if self.cb_chunk_written:
+            if hasattr(self.cb_chunk_written, '__call__'):
+                self.cb_chunk_written(self.current_file, self.line_count)
+            else:
+                raise ValueError("callback is not callable.")
 
     def writeline(self, s):
         self.__check_closed()
@@ -68,16 +77,17 @@ class ChunkWriter:
         return "<ChunkWriter %s>" % self.file_pattern
 
 
-def open(file_pattern, mode='r', chunk_size=1000):
+def open(file_pattern, mode='r', chunk_size=1000, cb_chunk_written=None):
     """
     :param file_pattern: filename with a placeholder({0}) for numbering chunks
     :param mode: 'r' for read, 'w' for write
     :param chunk_size: Only for 'w' mode. This will create files containing chunks of specified number of lines
+    :param cb_chunk_written: only for 'w' mode. Callback to be called when a chunk is written and closed.
     :returns: for 'r' ChunkReader and for 'w' ChunkWriter
     """
     if mode == 'r':
         return ChunkReader(file_pattern)
     elif mode == 'w':
-        return ChunkWriter(file_pattern, chunk_size)
+        return ChunkWriter(file_pattern, chunk_size, cb_chunk_written)
     else:
         raise ValueError("No supported mode.")
