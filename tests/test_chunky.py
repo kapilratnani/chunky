@@ -33,7 +33,7 @@ def test_chunkwriter_onefile():
     assert isinstance(writer, chunky.ChunkWriter)
 
     for i in range(0, 10):
-        writer.writeline(str(i))
+        writer.write(str(i) + os.linesep)
 
     writer.close()
 
@@ -60,7 +60,7 @@ def test_chunkwriter_multiple_files():
     assert isinstance(writer, chunky.ChunkWriter)
 
     for i in range(0, 16):
-        writer.writeline(str(i))
+        writer.write(str(i) + os.linesep)
 
     writer.close()
 
@@ -99,7 +99,7 @@ def test_chunkwriter_exception_on_closed_file():
     writer = chunky.open("/tmp/test_{0}.txt", 'w')
     writer.close()
     with pytest.raises(ValueError):
-        writer.writeline("test")
+        writer.write("test" + os.linesep)
 
 
 callback_called = False
@@ -121,7 +121,7 @@ def test_chunkwriter_callback():
         cb_chunk_written=callback)
 
     for i in range(0, 35):
-        writer.writeline(str(i))
+        writer.write(str(i) + os.linesep)
 
     writer.close()
 
@@ -137,7 +137,7 @@ def test_chunkwriter_callback_error():
     writer = chunky.open("/tmp/test_{0}.txt", 'w', cb_chunk_written="NotACallback")
 
     for i in range(0, 5):
-        writer.writeline(str(i))
+        writer.write(str(i) + os.linesep)
 
     with pytest.raises(ValueError):
         writer.close()

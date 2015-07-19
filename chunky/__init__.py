@@ -29,9 +29,16 @@ class ChunkReader:
 class ChunkWriter:
     """ChunkWriter writes files in sizes of chunk_size each.
     Creates files as per the pattern specified.
+    Only works for text files.
     """
 
     def __init__(self, file_pattern, chunk_size, cb_chunk_written):
+        """Constructor for the ChunkWriter class
+
+        :param file_pattern: pattern which specifies the names of files to be created
+        :param chunk_size: maximum number of lines in a chunk
+        :param cb_chunk_written: callback for notifying end of a chunk
+        """
         self.pattern = file_pattern
         self.__check_pattern()
         self.chunk_size = chunk_size
@@ -48,7 +55,7 @@ class ChunkWriter:
         dirname = os.path.dirname(self.pattern)
         basefilename = os.path.basename(self.pattern)
         fmt = string.Formatter()
-        # check dirname. it should not have any format params
+        # check dirname. it should not have any replacement field
         # returns tuple  (literal_text, field_name, format_spec, conversion
         parsed = fmt.parse(dirname)
         for p in parsed:
@@ -90,13 +97,13 @@ class ChunkWriter:
             else:
                 raise ValueError("callback is not callable.")
 
-    def writeline(self, s):
+    def write(self, s):
         self.__check_closed()
         if self.line_count == self.chunk_size:
             self.__make_new_file()
             self.line_count = 0
-        self.fileobj.write(s + "\n")
-        self.line_count += 1
+        self.fileobj.write(s)
+        self.line_count += s.count(os.linesep)
 
     def __check_closed(self):
         if self.fileobj is None:
