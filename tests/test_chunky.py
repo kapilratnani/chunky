@@ -10,12 +10,18 @@ import chunky
 def test_chunky_open():
     reader = chunky.open("/tmp/test_{0}.txt", 'r')
     assert isinstance(reader, chunky.ChunkReader)
+    reader.close()
 
     writer = chunky.open("/tmp/test_{0}.txt", 'w')
     assert isinstance(writer, chunky.ChunkWriter)
+    writer.close()
+
+    # test unsupported mode
+    with pytest.raises(ValueError):
+        chunky.open("/tmp/test_{0}.txt", 'a')
 
 
-def fileGetContents(path):
+def file_get_contents(path):
     fp = open(path)
     contents = fp.read()
     fp.close()
@@ -45,7 +51,7 @@ def test_chunkwriter_onefile():
 9
     """
 
-    result_content = fileGetContents("/tmp/test_0.txt")
+    result_content = file_get_contents("/tmp/test_0.txt")
     assert expected_content.strip() == result_content.strip()
 
 
@@ -72,7 +78,7 @@ def test_chunkwriter_multiple_files():
 9
     """
 
-    result_content = fileGetContents("/tmp/test_0.txt")
+    result_content = file_get_contents("/tmp/test_0.txt")
     assert expected_content.strip() == result_content.strip()
 
     assert os.path.exists("/tmp/test_1.txt")
@@ -85,7 +91,7 @@ def test_chunkwriter_multiple_files():
 15
     """
 
-    result_content = fileGetContents("/tmp/test_1.txt")
+    result_content = file_get_contents("/tmp/test_1.txt")
     assert expected_content.strip() == result_content.strip()
 
 
@@ -98,14 +104,17 @@ def test_chunkwriter_exception_on_closed_file():
 
 callback_called = False
 
+callback_count = 0
+
 
 def test_chunkwriter_callback():
     def callback(filename, num_lines_written):
-        global callback_called
+        global callback_called, callback_count
         callback_called = True
+        callback_count += 1
         assert os.path.exists(filename)
         assert num_lines_written > 0
-        assert len(fileGetContents(filename)) > 0
+        assert len(file_get_contents(filename)) > 0
 
     writer = chunky.open(
         "/tmp/test_{0}.txt", 'w', chunk_size=10,
@@ -121,3 +130,28 @@ def test_chunkwriter_callback():
     assert os.path.exists("/tmp/test_1.txt")
     assert os.path.exists("/tmp/test_2.txt")
     assert os.path.exists("/tmp/test_3.txt")
+    assert callback_count == 4
+
+
+def test_chunkwriter_callback_error():
+    writer = chunky.open("/tmp/test_{0}.txt", 'w', cb_chunk_written="NotACallback")
+
+    for i in range(0, 5):
+        writer.writeline(str(i))
+
+    with pytest.raises(ValueError):
+        writer.close()
+
+
+def test_chunkwriter_pattern():
+    wrong_pattern = "/tmp/{0}/test.txt"
+    with pytest.raises(ValueError):
+        chunky.open(wrong_pattern, mode='w')
+
+    wrong_pattern = "/tmp/test.txt"
+    with pytest.raises(ValueError):
+        chunky.open(wrong_pattern, mode='w')
+
+    wrong_pattern = "/tmp/test_{0}_{1}.txt"
+    with pytest.raises(ValueError):
+        chunky.open(wrong_pattern, mode='w')

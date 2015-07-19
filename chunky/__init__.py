@@ -5,7 +5,8 @@ A utility class to read and write files in chunks.
 
 Main entry-point for chunky
 """
-
+import os
+import string
 from __builtin__ import open as py_open
 
 __all__ = ["ChunkReader", "ChunkWriter", "open"]
@@ -32,12 +33,43 @@ class ChunkWriter:
 
     def __init__(self, file_pattern, chunk_size, cb_chunk_written):
         self.pattern = file_pattern
+        self.__check_pattern()
         self.chunk_size = chunk_size
         self.cnum = 0
         self.line_count = 0
         self.fileobj = None
         self.cb_chunk_written = cb_chunk_written
         self.__make_new_file()
+
+    def __check_pattern(self):
+        """Replacement field should only be in filename.
+        Only supported replacement field is {0}
+        """
+        dirname = os.path.dirname(self.pattern)
+        basefilename = os.path.basename(self.pattern)
+        fmt = string.Formatter()
+        # check dirname. it should not have any format params
+        # returns tuple  (literal_text, field_name, format_spec, conversion
+        parsed = fmt.parse(dirname)
+        for p in parsed:
+            # p[1] is replacement field name
+            if p[1] is not None:
+                raise ValueError("replacement field in dirname is not supported")
+
+        # check filename
+        parsed = fmt.parse(basefilename)
+        num_replacement_field = 0
+        for p in parsed:
+            if p[1] is not None:
+                num_replacement_field += 1
+                if p[1] != '0':
+                    raise ValueError("Only {0} is supported")
+
+        if num_replacement_field == 0:
+            raise ValueError("one replacement field is required")
+
+        if num_replacement_field > 1:
+            raise ValueError("Only 1 replacement field is supported")
 
     def __make_new_file(self):
         self.__close_current()
@@ -74,7 +106,7 @@ class ChunkWriter:
         self.__close_current()
 
     def __repr__(self):
-        return "<ChunkWriter %s>" % self.file_pattern
+        return "<ChunkWriter %s>" % self.pattern
 
 
 def open(file_pattern, mode='r', chunk_size=1000, cb_chunk_written=None):
@@ -90,4 +122,4 @@ def open(file_pattern, mode='r', chunk_size=1000, cb_chunk_written=None):
     elif mode == 'w':
         return ChunkWriter(file_pattern, chunk_size, cb_chunk_written)
     else:
-        raise ValueError("No supported mode.")
+        raise ValueError("Not a supported mode.")
