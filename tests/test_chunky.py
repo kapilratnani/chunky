@@ -155,3 +155,55 @@ def test_chunkwriter_pattern():
     wrong_pattern = "/tmp/test_{0}_{1}.txt"
     with pytest.raises(ValueError):
         chunky.open(wrong_pattern, mode='w')
+
+chunk_start_called = False
+chunk_written_called = False
+
+
+def test_with_csv_dictwriter():
+    import csv
+    csvfile = chunky.open("/tmp/csv_test_{0}.csv", mode='w', chunk_size=6)
+    writer = csv.DictWriter(csvfile, fieldnames=["id", "name"])
+
+    def chunk_start(filename):
+        global chunk_start_called
+        chunk_start_called = True
+        writer.writeheader()
+        assert filename is not None
+
+    def chunk_written(filename, num_lines_written):
+        global chunk_written_called
+        chunk_written_called = True
+        assert filename is not None
+        assert num_lines_written > 0
+
+    csvfile.cb_chunk_start = chunk_start
+    csvfile.cb_chunk_written = chunk_written
+
+    writer.writeheader()
+    for i in range(0, 16):
+        writer.writerow({"id": i, "name": "Test"})
+
+    csvfile.close()
+
+    assert chunk_written_called
+    assert chunk_start_called
+
+    assert os.path.exists("/tmp/csv_test_0.csv")
+    assert os.path.exists("/tmp/csv_test_1.csv")
+    assert os.path.exists("/tmp/csv_test_2.csv")
+
+    num_lines = []
+    for i in range(0, 3):
+        fp = open("/tmp/csv_test_0.csv")
+        reader = csv.DictReader(fp)
+        assert reader.fieldnames == ["id", "name"]
+        count = 0
+        for row in reader:
+            assert row["id"]
+            assert row["name"]
+            count += 1
+        num_lines.append(count)
+
+    assert num_lines == [5, 5, 5]
+

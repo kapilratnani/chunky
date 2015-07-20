@@ -32,12 +32,14 @@ class ChunkWriter:
     Only works for text files.
     """
 
-    def __init__(self, file_pattern, chunk_size, cb_chunk_written):
+    def __init__(self, file_pattern, chunk_size,
+                 cb_chunk_written, cb_chunk_start):
         """Constructor for the ChunkWriter class
 
         :param file_pattern: pattern which specifies the names of files to be created
         :param chunk_size: maximum number of lines in a chunk
         :param cb_chunk_written: callback for notifying end of a chunk
+        :param cb_chunk_start: callback for notifying start of a chunk
         """
         self.pattern = file_pattern
         self.__check_pattern()
@@ -46,6 +48,7 @@ class ChunkWriter:
         self.line_count = 0
         self.fileobj = None
         self.cb_chunk_written = cb_chunk_written
+        self.cb_chunk_start = cb_chunk_start
         self.__make_new_file()
 
     def __check_pattern(self):
@@ -79,29 +82,37 @@ class ChunkWriter:
             raise ValueError("Only 1 replacement field is supported")
 
     def __make_new_file(self):
-        self.__close_current()
         self.current_file = self.pattern.format(self.cnum)
         self.fileobj = py_open(self.current_file, 'w')
+        self.__notify_chunk_start()
         self.cnum += 1
 
     def __close_current(self):
         if self.fileobj:
             self.fileobj.close()
-            self.__notify_subscriber()
+            self.__notify_chunk_written()
             self.fileobj = None
 
-    def __notify_subscriber(self):
+    def __notify_chunk_written(self):
         if self.cb_chunk_written:
             if hasattr(self.cb_chunk_written, '__call__'):
                 self.cb_chunk_written(self.current_file, self.line_count)
             else:
                 raise ValueError("callback is not callable.")
 
+    def __notify_chunk_start(self):
+        if self.cb_chunk_start:
+            if hasattr(self.cb_chunk_start, '__call__'):
+                self.cb_chunk_start(self.current_file)
+            else:
+                raise ValueError("callback is not callable.")
+
     def write(self, s):
         self.__check_closed()
         if self.line_count == self.chunk_size:
-            self.__make_new_file()
+            self.__close_current()
             self.line_count = 0
+            self.__make_new_file()
         self.fileobj.write(s)
         self.line_count += s.count(os.linesep)
 
@@ -116,17 +127,20 @@ class ChunkWriter:
         return "<ChunkWriter %s>" % self.pattern
 
 
-def open(file_pattern, mode='r', chunk_size=1000, cb_chunk_written=None):
+def open(file_pattern, mode='r', chunk_size=1000,
+         cb_chunk_written=None, cb_chunk_start=None):
     """
     :param file_pattern: filename with a placeholder({0}) for numbering chunks
     :param mode: 'r' for read, 'w' for write
     :param chunk_size: Only for 'w' mode. This will create files containing chunks of specified number of lines
     :param cb_chunk_written: only for 'w' mode. Callback to be called when a chunk is written and closed.
+    :param cb_chunk_start: Callback to be called when a new chunk starts
     :returns: for 'r' ChunkReader and for 'w' ChunkWriter
     """
     if mode == 'r':
         return ChunkReader(file_pattern)
     elif mode == 'w':
-        return ChunkWriter(file_pattern, chunk_size, cb_chunk_written)
+        return ChunkWriter(file_pattern, chunk_size,
+                           cb_chunk_written, cb_chunk_start)
     else:
         raise ValueError("Not a supported mode.")
