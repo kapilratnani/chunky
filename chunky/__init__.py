@@ -132,10 +132,12 @@ class ChunkedTextFile(io.TextIOBase):
         self.line_count += s.count(os.linesep)
 
     def __check_writable(self):
-        pass
+        if self.mode != 'w':
+            raise IOError("File not open for writing")
 
     def __check_readable(self):
-        pass
+        if self.mode != 'r':
+            raise IOError("File not open for reading")
 
     def readline(self):
         self.__check_closed()
