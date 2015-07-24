@@ -60,7 +60,7 @@ class ChunkedTextFile(io.TextIOBase):
         self.fileobj = None
         self.cb_chunk_closed = cb_chunk_closed
         self.cb_chunk_start = cb_chunk_start
-        self.__make_new_file()
+        self.__init_new_file()
 
     def __check_pattern(self):
         """Replacement field should only be in filename.
@@ -96,9 +96,9 @@ class ChunkedTextFile(io.TextIOBase):
         self.current_file = self.pattern.format(self.cnum)
         self.cnum += 1
 
-    def __make_new_file(self):
+    def __init_new_file(self):
         self.__make_next_filename()
-        self.fileobj = py_open(self.current_file, 'w')
+        self.fileobj = py_open(self.current_file, self.mode)
         self.__notify_chunk_start()
 
     def __close_current(self):
@@ -127,15 +127,29 @@ class ChunkedTextFile(io.TextIOBase):
         if self.line_count == self.chunk_size:
             self.__close_current()
             self.line_count = 0
-            self.__make_new_file()
+            self.__init_new_file()
         self.fileobj.write(s)
         self.line_count += s.count(os.linesep)
 
     def __check_writable(self):
         pass
 
-    def readline(self):
+    def __check_readable(self):
         pass
+
+    def readline(self):
+        self.__check_closed()
+        self.__check_readable()
+        line = self.fileobj.readline()
+        if not line:
+            self.__close_current()
+            try:
+                self.__init_new_file()
+                return self.readline()
+            except IOError:
+                return line
+        else:
+            return line
 
     def readable(self):
         return self.mode == 'r'

@@ -10,10 +10,16 @@ import chunky
 def test_chunky_open():
     reader = chunky.open("/tmp/test_{0}.txt", 'r')
     assert isinstance(reader, chunky.ChunkedTextFile)
+    assert reader.readable()
+    assert not reader.writable()
+    assert not reader.seekable()
     reader.close()
 
     writer = chunky.open("/tmp/test_{0}.txt", 'w')
     assert isinstance(writer, chunky.ChunkedTextFile)
+    assert not writer.readable()
+    assert writer.writable()
+    assert not writer.seekable()
     writer.close()
 
     # test unsupported mode
@@ -157,7 +163,7 @@ def test_chunkwriter_pattern():
         chunky.open(wrong_pattern, mode='w')
 
 chunk_start_called = False
-chunk_written_called = False
+chunk_closed_called = False
 
 
 def test_with_csv_dictwriter():
@@ -172,8 +178,8 @@ def test_with_csv_dictwriter():
         assert filename is not None
 
     def chunk_written(filename, num_lines_written):
-        global chunk_written_called
-        chunk_written_called = True
+        global chunk_closed_called
+        chunk_closed_called = True
         assert filename is not None
         assert num_lines_written > 0
 
@@ -186,7 +192,7 @@ def test_with_csv_dictwriter():
 
     csvfile.close()
 
-    assert chunk_written_called
+    assert chunk_closed_called
     assert chunk_start_called
 
     assert os.path.exists("/tmp/csv_test_0.csv")
@@ -207,3 +213,57 @@ def test_with_csv_dictwriter():
 
     assert num_lines == [5, 5, 5]
 
+
+def test_chunkreader_onefile():
+    # create a dummy file
+    fp = open("/tmp/test_reader_onefile_0.csv", 'w')
+    for i in range(0, 10):
+        fp.write(str(i)+os.linesep)
+    fp.close()
+
+    content = []
+    reader = chunky.open("/tmp/test_reader_onefile_{0}.csv", 'r')
+    for line in reader:
+        content.append(line.strip())
+
+    expected_content = [str(i) for i in range(0, 10)]
+    assert expected_content == content
+
+
+def test_chunkreader_multiple_files():
+    fp = open("/tmp/test_reader_0.csv", 'w')
+    for i in range(0, 10):
+        fp.write(str(i)+os.linesep)
+    fp.close()
+
+    fp = open("/tmp/test_reader_1.csv", 'w')
+    for i in range(10, 15):
+        fp.write(str(i)+os.linesep)
+    fp.close()
+
+    fp = open("/tmp/test_reader_2.csv", 'w')
+    for i in range(15, 20):
+        fp.write(str(i)+os.linesep)
+    fp.close()
+
+    content = []
+    reader = chunky.open("/tmp/test_reader_{0}.csv", 'r')
+    for line in reader:
+        content.append(line.strip())
+
+    expected_content = [str(i) for i in range(0, 20)]
+    assert expected_content == content
+
+
+def test_chunkedfile_errors():
+    # read on writable file
+    writer = chunky.open("/tmp/test_error_{0}.txt", "w")
+    with pytest.raises(IOError):
+        writer.readline()
+    writer.close()
+
+    # write on readable file
+    reader = chunky.open("/tmp/test_error_{0}.txt", "r")
+    with pytest.raises(IOError):
+        reader.write("Test")
+    reader.close()
