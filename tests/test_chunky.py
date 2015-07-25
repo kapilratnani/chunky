@@ -9,17 +9,17 @@ import chunky
 
 def test_chunky_open():
     # create dummy file
-    fp = open("test_0.txt", 'w')
+    fp = open("tmp/test_0.txt", 'w')
     fp.close()
 
-    reader = chunky.open("test_{0}.txt", 'r')
+    reader = chunky.open("tmp/test_{0}.txt", 'r')
     assert isinstance(reader, chunky.ChunkedTextFile)
     assert reader.readable()
     assert not reader.writable()
     assert not reader.seekable()
     reader.close()
 
-    writer = chunky.open("test_{0}.txt", 'w')
+    writer = chunky.open("tmp/test_{0}.txt", 'w')
     assert isinstance(writer, chunky.ChunkedTextFile)
     assert not writer.readable()
     assert writer.writable()
@@ -28,7 +28,7 @@ def test_chunky_open():
 
     # test unsupported mode
     with pytest.raises(ValueError):
-        chunky.open("test_{0}.txt", 'a')
+        chunky.open("tmp/test_{0}.txt", 'a')
 
 
 def file_get_contents(path):
@@ -39,7 +39,7 @@ def file_get_contents(path):
 
 
 def test_chunkwriter_onefile():
-    writer = chunky.open("test_{0}.txt", 'w', 10)
+    writer = chunky.open("tmp/test_{0}.txt", 'w', 10)
     assert isinstance(writer, chunky.ChunkedTextFile)
 
     for i in range(0, 10):
@@ -47,7 +47,7 @@ def test_chunkwriter_onefile():
 
     writer.close()
 
-    assert os.path.exists("test_0.txt")
+    assert os.path.exists("tmp/test_0.txt")
     expected_content = """
 0
 1
@@ -61,12 +61,12 @@ def test_chunkwriter_onefile():
 9
     """
 
-    result_content = file_get_contents("test_0.txt")
+    result_content = file_get_contents("tmp/test_0.txt")
     assert expected_content.strip() == result_content.strip()
 
 
 def test_chunkwriter_multiple_files():
-    writer = chunky.open("test_{0}.txt", 'w', 10)
+    writer = chunky.open("tmp/test_{0}.txt", 'w', 10)
     assert isinstance(writer, chunky.ChunkedTextFile)
 
     for i in range(0, 16):
@@ -74,7 +74,7 @@ def test_chunkwriter_multiple_files():
 
     writer.close()
 
-    assert os.path.exists("test_0.txt")
+    assert os.path.exists("tmp/test_0.txt")
     expected_content = """
 0
 1
@@ -88,10 +88,10 @@ def test_chunkwriter_multiple_files():
 9
     """
 
-    result_content = file_get_contents("test_0.txt")
+    result_content = file_get_contents("tmp/test_0.txt")
     assert expected_content.strip() == result_content.strip()
 
-    assert os.path.exists("test_1.txt")
+    assert os.path.exists("tmp/test_1.txt")
     expected_content = """
 10
 11
@@ -101,12 +101,12 @@ def test_chunkwriter_multiple_files():
 15
     """
 
-    result_content = file_get_contents("test_1.txt")
+    result_content = file_get_contents("tmp/test_1.txt")
     assert expected_content.strip() == result_content.strip()
 
 
 def test_chunkwriter_exception_on_closed_file():
-    writer = chunky.open("test_{0}.txt", 'w')
+    writer = chunky.open("tmp/test_closed_file_{0}.txt", 'w')
     writer.close()
     with pytest.raises(ValueError):
         writer.write("test" + os.linesep)
@@ -127,7 +127,7 @@ def test_chunkwriter_callback():
         assert len(file_get_contents(filename)) > 0
 
     writer = chunky.open(
-        "test_{0}.txt", 'w', chunk_size=10,
+        "tmp/test_{0}.txt", 'w', chunk_size=10,
         cb_chunk_closed=callback)
 
     for i in range(0, 35):
@@ -136,15 +136,15 @@ def test_chunkwriter_callback():
     writer.close()
 
     assert callback_called
-    assert os.path.exists("test_0.txt")
-    assert os.path.exists("test_1.txt")
-    assert os.path.exists("test_2.txt")
-    assert os.path.exists("test_3.txt")
+    assert os.path.exists("tmp/test_0.txt")
+    assert os.path.exists("tmp/test_1.txt")
+    assert os.path.exists("tmp/test_2.txt")
+    assert os.path.exists("tmp/test_3.txt")
     assert callback_count == 4
 
 
 def test_chunkwriter_callback_error():
-    writer = chunky.open("test_{0}.txt", 'w', cb_chunk_closed="NotACallback")
+    writer = chunky.open("tmp/test_{0}.txt", 'w', cb_chunk_closed="NotACallback")
 
     for i in range(0, 5):
         writer.write(str(i) + os.linesep)
@@ -154,15 +154,15 @@ def test_chunkwriter_callback_error():
 
 
 def test_chunkwriter_pattern():
-    wrong_pattern = "{0}/test.txt"
+    wrong_pattern = "tmp/{0}/test.txt"
     with pytest.raises(ValueError):
         chunky.open(wrong_pattern, mode='w')
 
-    wrong_pattern = "test.txt"
+    wrong_pattern = "tmp/test.txt"
     with pytest.raises(ValueError):
         chunky.open(wrong_pattern, mode='w')
 
-    wrong_pattern = "test_{0}_{1}.txt"
+    wrong_pattern = "tmp/test_{0}_{1}.txt"
     with pytest.raises(ValueError):
         chunky.open(wrong_pattern, mode='w')
 
@@ -173,7 +173,7 @@ chunk_closed_called = False
 
 def test_with_csv_dictwriter():
     import csv
-    csvfile = chunky.open("csv_test_{0}.csv", mode='w', chunk_size=6)
+    csvfile = chunky.open("tmp/csv_test_{0}.csv", mode='w', chunk_size=6)
     writer = csv.DictWriter(csvfile, fieldnames=["id", "name"])
 
     def chunk_start(filename):
@@ -200,13 +200,13 @@ def test_with_csv_dictwriter():
     assert chunk_closed_called
     assert chunk_start_called
 
-    assert os.path.exists("csv_test_0.csv")
-    assert os.path.exists("csv_test_1.csv")
-    assert os.path.exists("csv_test_2.csv")
+    assert os.path.exists("tmp/csv_test_0.csv")
+    assert os.path.exists("tmp/csv_test_1.csv")
+    assert os.path.exists("tmp/csv_test_2.csv")
 
     num_lines = []
     for i in range(0, 3):
-        fp = open("csv_test_0.csv")
+        fp = open("tmp/csv_test_0.csv")
         reader = csv.DictReader(fp)
         assert reader.fieldnames == ["id", "name"]
         count = 0
@@ -221,13 +221,13 @@ def test_with_csv_dictwriter():
 
 def test_chunkreader_onefile():
     # create a dummy file
-    fp = open("test_reader_onefile_0.csv", 'w')
+    fp = open("tmp/test_reader_onefile_0.csv", 'w')
     for i in range(0, 10):
         fp.write(str(i) + os.linesep)
     fp.close()
 
     content = []
-    reader = chunky.open("test_reader_onefile_{0}.csv", 'r')
+    reader = chunky.open("tmp/test_reader_onefile_{0}.csv", 'r')
     for line in reader:
         content.append(line.strip())
 
@@ -236,23 +236,23 @@ def test_chunkreader_onefile():
 
 
 def test_chunkreader_multiple_files():
-    fp = open("test_reader_0.csv", 'w')
+    fp = open("tmp/test_reader_0.csv", 'w')
     for i in range(0, 10):
         fp.write(str(i) + os.linesep)
     fp.close()
 
-    fp = open("test_reader_1.csv", 'w')
+    fp = open("tmp/test_reader_1.csv", 'w')
     for i in range(10, 15):
         fp.write(str(i) + os.linesep)
     fp.close()
 
-    fp = open("test_reader_2.csv", 'w')
+    fp = open("tmp/test_reader_2.csv", 'w')
     for i in range(15, 20):
         fp.write(str(i) + os.linesep)
     fp.close()
 
     content = []
-    reader = chunky.open("test_reader_{0}.csv", 'r')
+    reader = chunky.open("tmp/test_reader_{0}.csv", 'r')
     for line in reader:
         content.append(line.strip())
 
@@ -262,13 +262,23 @@ def test_chunkreader_multiple_files():
 
 def test_chunkedfile_errors():
     # read on writable file
-    writer = chunky.open("test_error_{0}.txt", "w")
+    writer = chunky.open("tmp/test_error_{0}.txt", "w")
     with pytest.raises(IOError):
         writer.readline()
     writer.close()
 
     # write on readable file
-    reader = chunky.open("test_error_{0}.txt", "r")
+    reader = chunky.open("tmp/test_error_{0}.txt", "r")
     with pytest.raises(IOError):
         reader.write("Test")
     reader.close()
+
+
+def teardown_module(module):
+    import shutil
+    shutil.rmtree("tmp")
+
+
+def setup_module(module):
+    if not os.path.exists('tmp'):
+        os.makedirs('tmp')
