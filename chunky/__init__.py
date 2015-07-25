@@ -8,7 +8,12 @@ Inspired from gzip.py in python 2.7 standard library.
 import io
 import os
 import string
-from __builtin__ import open as py_open
+import sys
+
+if sys.version_info > (3, 0):
+    from builtins import open as py_open
+else:
+    from __builtin__ import open as py_open
 
 __author__ = ('Kapil Ratnani', 'kapil.ratnani@iiitb.net')
 
