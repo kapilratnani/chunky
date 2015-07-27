@@ -10,5 +10,5 @@ script:
 
 after_success:
     - if [[ $ENV == python=3.4* ]]; then
-          coveralls;
+          COVERALLS_REPO_TOKEN=Ea59494Ak3Gj2GIBhHxt8uKxZUd2ouveS coveralls;
       fi
